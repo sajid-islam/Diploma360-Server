@@ -74,4 +74,26 @@ router.get("/:id", async (req, res) => {
     }
 });
 
+router.post("/:id/registration", verifyToken, async (req, res) => {
+    try {
+        const registrationData = req.body;
+        const { id } = req.params;
+
+        const event = await Event.findById(id);
+
+        if (!event) {
+            return res.status(404).json({ message: "Event not found" });
+        }
+
+        event.registrations.push(registrationData);
+
+        await event.save();
+
+        res.status(201).json(event);
+    } catch (error) {
+        console.error("Error on registration post route", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 export default router;
