@@ -42,6 +42,12 @@ router.post("/", async (req, res) => {
     }
 });
 
+router.post("/jwt", (req, res) => {
+    const { email } = req.body;
+    const token = generateToken({ email });
+    res.cookie("token", token, cookieOptions);
+    res.json({ message: "Token set in cookie" });
+});
 router.delete("/logout", (req, res) => {
     res.clearCookie("token", { ...cookieOptions, maxAge: 0 }).send("Logout");
 });
