@@ -11,6 +11,16 @@ const registrationSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+const reviewSchema = new mongoose.Schema(
+    {
+        name: { type: String, required: true },
+        email: { type: String, required: true },
+        rating: { type: Number, required: true, default: 1 },
+        comment: { type: String, required: true },
+    },
+    { timestamps: true }
+);
+
 const eventSchema = new mongoose.Schema(
     {
         eventName: { type: String, required: true, trim: true },
@@ -21,7 +31,8 @@ const eventSchema = new mongoose.Schema(
         numberOfSeats: { type: Number, required: true, min: 1 },
         eventImage: { type: String, required: true },
         eventLink: { type: String, trim: true },
-        registrations: [registrationSchema], // embedded registrations
+        registrations: [registrationSchema],
+        reviews: [reviewSchema],
     },
     { timestamps: true }
 );

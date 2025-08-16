@@ -149,4 +149,36 @@ router.get("/:email/my-bookings", verifyToken, async (req, res) => {
     }
 });
 
+router.post("/:id/review", verifyToken, async (req, res) => {
+    try {
+        const reviewData = req.body;
+        const { id } = req.params;
+        const email = req.user.email;
+
+        const event = await Event.findById(id);
+        const alreadyReviewed = await Event.findOne({
+            _id: id,
+            "reviews.email": email,
+        });
+
+        if (alreadyReviewed) {
+            return res.status(409).json({
+                success: false,
+                message: "Already reviewed this event",
+            });
+        }
+
+        event.reviews.push(reviewData);
+
+        event.save();
+        res.status(201).json(event);
+    } catch (error) {
+        console.error("Error on my bookings events route", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+});
+
 export default router;
