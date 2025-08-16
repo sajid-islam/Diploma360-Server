@@ -1,7 +1,14 @@
 import express from "express";
 import User from "../models/User.js";
+import generateToken from "../lib/generateToken.js";
 
 const router = express.Router();
+
+const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production" ? true : false,
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "lax",
+};
 
 router.post("/", async (req, res) => {
     const { name, email, photoURL, uid } = req.body;
@@ -24,12 +31,19 @@ router.post("/", async (req, res) => {
             uid,
         });
         await user.save();
+        const token = generateToken({ email: user.email });
+
+        res.cookie("token", token, cookieOptions);
 
         res.status(201).send(user);
     } catch (error) {
         console.log("Error on user creating route", error);
         res.status(500).json({ message: "Internal server error" });
     }
+});
+
+router.delete("/logout", (req, res) => {
+    res.clearCookie("token", { ...cookieOptions, maxAge: 0 }).send("Logout");
 });
 
 export default router;
