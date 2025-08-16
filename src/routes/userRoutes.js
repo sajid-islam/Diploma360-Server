@@ -14,10 +14,14 @@ router.post("/", async (req, res) => {
     const { name, email, photoURL, uid } = req.body;
     try {
         if (!uid) {
-            return res.status(400).json({ message: "Auth UID not find" });
+            return res
+                .status(400)
+                .json({ success: false, message: "Auth UID not find" });
         }
         if (!name || !email || !photoURL) {
-            return res.status(400).json({ message: "All filed are required" });
+            return res
+                .status(400)
+                .json({ success: false, message: "All filed are required" });
         }
         const existingUser = await User.findOne({ email });
         if (existingUser) {
@@ -38,7 +42,10 @@ router.post("/", async (req, res) => {
         res.status(201).send(user);
     } catch (error) {
         console.log("Error on user creating route", error);
-        res.status(500).json({ message: "Internal server error" });
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
     }
 });
 
