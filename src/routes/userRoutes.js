@@ -5,7 +5,6 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
     const { name, email, photoURL, uid } = req.body;
-    console.log(name, email, photoURL, uid);
     try {
         if (!uid) {
             return res.status(400).json({ message: "Auth UID not find" });
@@ -15,7 +14,7 @@ router.post("/", async (req, res) => {
         }
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            return res.status(400).json({ message: "Email already exist" });
+            return res.status(200).json(existingUser);
         }
 
         const user = new User({
