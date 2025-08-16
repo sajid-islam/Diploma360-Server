@@ -54,4 +54,24 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
     }
 });
 
+router.get("/", async (req, res) => {
+    try {
+        const events = await Event.find();
+        res.status(200).json(events);
+    } catch (error) {
+        console.log("Error in event get route", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+router.get("/:id", async (req, res) => {
+    const id = req.params.id;
+    try {
+        const event = await Event.findById(id);
+        res.status(200).json(event);
+    } catch (error) {
+        console.log("Error in event get route", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
 export default router;

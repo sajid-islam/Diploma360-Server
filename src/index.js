@@ -19,7 +19,7 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 
 app.use("/api/user", userRoutes);
-app.use("/api/event", eventRoutes);
+app.use("/api/events", eventRoutes);
 
 app.get("/", (req, res) => {
     res.send("HELLO FROM DIPLOMA360 SERVER");
