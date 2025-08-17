@@ -1,6 +1,7 @@
 import express from "express";
 import User from "../models/User.js";
 import generateToken from "../lib/generateToken.js";
+import verifyToken from "./../middleware/verifyToken.middleware.js";
 
 const router = express.Router();
 
@@ -57,6 +58,27 @@ router.post("/jwt", (req, res) => {
 });
 router.delete("/logout", (req, res) => {
     res.clearCookie("token", { ...cookieOptions, maxAge: 0 }).send("Logout");
+});
+
+router.get("/is-admin", verifyToken, async (req, res) => {
+    try {
+        const { email } = req.user; // from verifyToken middleware
+        const user = await User.findOne({ email });
+        console.log(user);
+        if (!user) {
+            return res
+                .status(404)
+                .json({ success: false, message: "User not found" });
+        }
+
+        res.json({ isAdmin });
+    } catch (error) {
+        console.error("Error checking admin", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
 });
 
 export default router;
