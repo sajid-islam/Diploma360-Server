@@ -6,7 +6,6 @@ import cookieParser from "cookie-parser";
 
 import userRoutes from "./routes/userRoutes.js";
 import eventRoutes from "./routes/eventRoutes.js";
-import job from "./lib/cron.js";
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -18,7 +17,6 @@ app.use(
     })
 );
 app.use(express.json({ limit: "2mb" }));
-job.start();
 
 app.use("/api/user", userRoutes);
 app.use("/api/events", eventRoutes);
