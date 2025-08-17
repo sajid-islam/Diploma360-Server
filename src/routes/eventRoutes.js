@@ -175,6 +175,51 @@ router.post("/:id/registration", verifyToken, async (req, res) => {
     }
 });
 
+// Cancel event registration
+router.delete("/:id/registration", verifyToken, async (req, res) => {
+    try {
+        const { id } = req.params; // Event ID
+        const email = req.user.email; // Logged-in user
+
+        const event = await Event.findById(id);
+
+        if (!event) {
+            return res
+                .status(404)
+                .json({ success: false, message: "Event not found" });
+        }
+
+        // Check if user has a registration
+        const registrationIndex = event.registrations.findIndex(
+            (reg) => reg.email === email
+        );
+
+        if (registrationIndex === -1) {
+            return res
+                .status(404)
+                .json({
+                    success: false,
+                    message: "You have not registered for this event",
+                });
+        }
+
+        // Remove registration
+        event.registrations.splice(registrationIndex, 1);
+        await event.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Registration canceled successfully",
+        });
+    } catch (error) {
+        console.error("Error canceling registration:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+});
+
 router.get("/:email/my-bookings", verifyToken, async (req, res) => {
     try {
         const { email } = req.params;
