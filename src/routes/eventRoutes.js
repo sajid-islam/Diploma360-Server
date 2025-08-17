@@ -92,6 +92,37 @@ router.get("/featured", async (req, res) => {
     }
 });
 
+router.get("/recent-reviews", async (req, res) => {
+    try {
+        const recentReviews = await Event.aggregate([
+            { $unwind: "$reviews" },
+            { $sort: { "reviews.createdAt": -1 } },
+            { $limit: 3 },
+            {
+                $project: {
+                    eventName: 1,
+                    "reviews.name": 1,
+                    "reviews.comment": 1,
+                    "reviews.rating": 1,
+                    "reviews.createdAt": 1,
+                },
+            },
+        ]);
+        if (!recentReviews || recentReviews.length === 0) {
+            return res
+                .status(404)
+                .json({ success: false, message: "Recent reviews not found" });
+        }
+        res.status(200).json(recentReviews);
+    } catch (error) {
+        console.error("Error on get recent reviews route", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+});
+
 router.get("/:id", async (req, res) => {
     const id = req.params.id;
     try {
