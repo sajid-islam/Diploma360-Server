@@ -71,6 +71,7 @@ router.get("/is-admin", verifyToken, async (req, res) => {
                 .json({ success: false, message: "User not found" });
         }
 
+        const isAdmin = user.role === "admin";
         res.json({ isAdmin });
     } catch (error) {
         console.error("Error checking admin", error);
