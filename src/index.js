@@ -18,6 +18,8 @@ app.use(
 );
 app.use(express.json({ limit: "2mb" }));
 
+connectDB();
+
 app.use("/api/user", userRoutes);
 app.use("/api/events", eventRoutes);
 
@@ -27,5 +29,4 @@ app.get("/", (req, res) => {
 
 app.listen(port, () => {
     console.log(`Diploma360 server listening on port ${port}`);
-    connectDB();
 });
