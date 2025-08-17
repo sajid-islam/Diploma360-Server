@@ -62,16 +62,7 @@ router.delete("/logout", (req, res) => {
 
 router.get("/is-admin", verifyToken, async (req, res) => {
     try {
-        const { email } = req.user; // from verifyToken middleware
-        const user = await User.findOne({ email });
-        console.log(user);
-        if (!user) {
-            return res
-                .status(404)
-                .json({ success: false, message: "User not found" });
-        }
-
-        const isAdmin = user.role === "admin";
+        const isAdmin = req.user.role === "admin";
         res.json({ isAdmin });
     } catch (error) {
         console.error("Error checking admin", error);
