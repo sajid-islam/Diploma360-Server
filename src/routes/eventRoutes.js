@@ -1,4 +1,4 @@
-import express from "express";
+import express, { json } from "express";
 import cloudinary from "../lib/cloudinary.js";
 import Event from "../models/Event.js";
 import verifyToken from "../middleware/verifyToken.middleware.js";
@@ -70,6 +70,28 @@ router.get("/", async (req, res) => {
         });
     }
 });
+
+router.get("/featured", async (req, res) => {
+    try {
+        const featuredEvents = await Event.find()
+            .sort("-1")
+            .limit(3)
+            .select("-registrations -reviews");
+        if (!featuredEvents) {
+            return res
+                .status(404)
+                .json({ success: false, message: "Featured events not found" });
+        }
+        res.status(200).json(featuredEvents);
+    } catch (error) {
+        console.error("Error on get featured events route", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+});
+
 router.get("/:id", async (req, res) => {
     const id = req.params.id;
     try {
