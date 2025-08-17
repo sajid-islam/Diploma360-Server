@@ -7,8 +7,8 @@ const router = express.Router();
 
 const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production" ? true : false,
-    sameSite: process.env.NODE_ENV === "production" ? "None" : "lax",
+    secure: true,
+    sameSite: "None",
 };
 
 router.post("/", async (req, res) => {
