@@ -7,6 +7,7 @@ const registrationSchema = new mongoose.Schema(
         phone: { type: String, required: true },
         numberOfSeats: { type: Number, required: true, min: 1 },
         paymentMethod: { type: String, required: true },
+        paymentStatus: { type: String, required: true, default: "pending" },
     },
     { timestamps: true }
 );
@@ -33,6 +34,9 @@ const eventSchema = new mongoose.Schema(
         eventLink: { type: String, trim: true },
         registrations: [registrationSchema],
         reviews: [reviewSchema],
+        fee: { type: Number, required: true },
+        organizer: { type: String, required: true },
+        deadline: { type: Date, required: true },
     },
     { timestamps: true }
 );

@@ -15,6 +15,9 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
         numberOfSeats,
         image,
         eventLink,
+        fee,
+        organizer,
+        deadline,
     } = req.body;
     try {
         if (
@@ -24,7 +27,10 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
             !category ||
             !description ||
             !numberOfSeats ||
-            !image
+            !image ||
+            !fee ||
+            !organizer ||
+            !deadline
         ) {
             res.status(400).json({
                 success: false,
@@ -44,6 +50,9 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
             numberOfSeats,
             eventImage: imageUrl,
             eventLink,
+            fee,
+            deadline,
+            organizer,
         });
 
         await newEvent.save();
@@ -195,12 +204,10 @@ router.delete("/:id/registration", verifyToken, async (req, res) => {
         );
 
         if (registrationIndex === -1) {
-            return res
-                .status(404)
-                .json({
-                    success: false,
-                    message: "You have not registered for this event",
-                });
+            return res.status(404).json({
+                success: false,
+                message: "You have not registered for this event",
+            });
         }
 
         // Remove registration
