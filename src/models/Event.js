@@ -7,6 +7,8 @@ const registrationSchema = new mongoose.Schema(
         phone: { type: String, required: true },
         paymentStatus: { type: String, required: true, default: "pending" },
         studyStatus: { type: String, required: true },
+        paymentMethod: { type: String, required: true },
+        transactionId: { type: String, required: true },
         sscYear: {
             type: String,
             required: function () {
