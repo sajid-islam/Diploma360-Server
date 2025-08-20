@@ -36,7 +36,7 @@ const eventSchema = new mongoose.Schema(
         reviews: [reviewSchema],
         fee: { type: Number, required: true },
         organizer: { type: String, required: true },
-        deadline: { type: Date, required: true },
+        deadline: { type: Date, default: null },
     },
     { timestamps: true }
 );

@@ -20,24 +20,6 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
         deadline,
     } = req.body;
     try {
-        if (
-            !eventName ||
-            !date ||
-            !location ||
-            !category ||
-            !description ||
-            !numberOfSeats ||
-            !image ||
-            !fee ||
-            !organizer ||
-            !deadline
-        ) {
-            res.status(400).json({
-                success: false,
-                message: "All field are required expect EventLink",
-            });
-        }
-
         const uploadResponse = await cloudinary.uploader.upload(image);
         const imageUrl = uploadResponse.secure_url;
 
@@ -51,8 +33,8 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
             eventImage: imageUrl,
             eventLink,
             fee,
-            deadline,
             organizer,
+            deadline,
         });
 
         await newEvent.save();
