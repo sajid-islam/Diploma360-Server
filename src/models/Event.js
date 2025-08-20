@@ -5,9 +5,26 @@ const registrationSchema = new mongoose.Schema(
         name: { type: String, required: true },
         email: { type: String, required: true, lowercase: true },
         phone: { type: String, required: true },
-        numberOfSeats: { type: Number, required: true, min: 1 },
-        paymentMethod: { type: String, required: true },
         paymentStatus: { type: String, required: true, default: "pending" },
+        studyStatus: { type: String, required: true },
+        sscYear: {
+            type: String,
+            required: function () {
+                return this.studyStatus === "want-to-study";
+            },
+        },
+        address: {
+            type: String,
+            required: function () {
+                return this.studyStatus === "want-to-study";
+            },
+        },
+        technology: {
+            type: String,
+            required: function () {
+                return this.studyStatus === "want-to-study";
+            },
+        },
     },
     { timestamps: true }
 );
@@ -35,8 +52,8 @@ const eventSchema = new mongoose.Schema(
         registrations: [registrationSchema],
         reviews: [reviewSchema],
         fee: { type: Number, required: true },
-        organizer: { type: String, required: true },
-        deadline: { type: Date, default: null },
+        organizer: { type: String, default: "Unknown" },
+        deadline: { type: Date, required: true },
     },
     { timestamps: true }
 );
