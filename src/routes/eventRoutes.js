@@ -101,6 +101,19 @@ router.get("/featured", async (req, res) => {
     }
 });
 
+router.get("/categories", async (req, res) => {
+    try {
+        const categories = await Event.distinct("category");
+        res.json(categories);
+    } catch (error) {
+        console.error("Error on get categories route", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+});
+
 router.get("/recent-reviews", async (req, res) => {
     try {
         const recentReviews = await Event.aggregate([
