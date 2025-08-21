@@ -55,7 +55,9 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
 
 router.get("/", async (req, res) => {
     try {
-        const events = await Event.find();
+        const events = await Event.find().select(
+            "category eventName eventImage date location numberOfSeats"
+        );
         res.status(200).json(events);
     } catch (error) {
         console.log("Error in event get route", error);
@@ -71,7 +73,9 @@ router.get("/featured", async (req, res) => {
         const featuredEvents = await Event.find()
             .sort("-1")
             .limit(3)
-            .select("-registrations -reviews");
+            .select(
+                "category eventName eventImage date location numberOfSeats"
+            );
         if (!featuredEvents) {
             return res
                 .status(404)
@@ -134,7 +138,9 @@ router.get("/recent-reviews", async (req, res) => {
 router.get("/:id", async (req, res) => {
     const id = req.params.id;
     try {
-        const event = await Event.findById(id);
+        const event = await Event.findById(id).select(
+            "-registrations -reviews -eventLink -locationType"
+        );
         res.status(200).json(event);
     } catch (error) {
         console.log("Error in event get route", error);
