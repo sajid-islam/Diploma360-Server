@@ -44,17 +44,41 @@ const reviewSchema = new mongoose.Schema(
 const eventSchema = new mongoose.Schema(
     {
         eventName: { type: String, required: true, trim: true },
-        date: { type: Date, required: true },
         location: { type: String, required: true, trim: true },
+        locationType: { type: String, required: true },
         category: { type: String, required: true, trim: true },
         description: { type: String, required: true },
-        numberOfSeats: { type: Number, required: true, min: 1 },
+
+        // Number of seats required when location type is physical
+        numberOfSeats: {
+            type: Number,
+            required: function () {
+                return this.locationType === "physical";
+            },
+        },
         eventImage: { type: String, required: true },
-        eventLink: { type: String, trim: true },
+
+        // Event link id required when location type is Online
+        eventLink: {
+            type: String,
+            trim: true,
+            required: function () {
+                return this.locationType === "online";
+            },
+        },
         registrations: [registrationSchema],
         reviews: [reviewSchema],
         fee: { type: Number, required: true },
         organizer: { type: String, default: "Unknown" },
+        date: { type: Date, required: true },
+
+        // Time required when location type is physical
+        time: {
+            type: String,
+            required: function () {
+                return this.locationType === "physical";
+            },
+        },
         deadline: { type: Date, required: true },
     },
     { timestamps: true }

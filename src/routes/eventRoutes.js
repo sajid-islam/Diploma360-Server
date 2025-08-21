@@ -8,7 +8,7 @@ const router = express.Router();
 router.post("/", verifyToken, verifyAdmin, async (req, res) => {
     const {
         eventName,
-        date,
+        locationType,
         location,
         category,
         description,
@@ -17,6 +17,8 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
         eventLink,
         fee,
         organizer,
+        date,
+        time,
         deadline,
     } = req.body;
     try {
@@ -25,14 +27,16 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
 
         const newEvent = new Event({
             eventName,
+            locationType,
             location,
-            date,
             category,
             description,
             numberOfSeats,
             eventImage: imageUrl,
             eventLink,
             fee,
+            date,
+            time,
             organizer,
             deadline,
         });
