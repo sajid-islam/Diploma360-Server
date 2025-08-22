@@ -10,9 +10,25 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+
         photoURL: {
             type: String,
             required: true,
+        },
+        studyStatus: {
+            type: String,
+        },
+        phone: {
+            type: String,
+        },
+        sscYear: {
+            type: Number,
+        },
+        address: {
+            type: String,
+        },
+        targetTechnology: {
+            type: String,
         },
         role: {
             type: String,

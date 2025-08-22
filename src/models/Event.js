@@ -21,7 +21,7 @@ const registrationSchema = new mongoose.Schema(
                 return this.studyStatus === "want-to-study";
             },
         },
-        technology: {
+        targetTechnology: {
             type: String,
             required: function () {
                 return this.studyStatus === "want-to-study";
