@@ -134,7 +134,6 @@ router.get("/payment/payment-requests", verifyToken, verifyAdmin, async (req, re
   try {
     // 1. Find payment requests of each events
     const paymentRequests = await Event.aggregate([
-      { $match: { "registrations.paymentStatus": "pending" } },
       { $unwind: "$registrations" },
       { $sort: { "registrations.createdAt": -1 } },
       {
@@ -186,6 +185,27 @@ router.put("/payment/:id/accept-payment", verifyToken, verifyAdmin, async (req, 
     res.status(204).json({ message: "Payment accepted" });
   } catch (error) {
     console.log("Error on accept payment route", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+router.put("/payment/:id/reject-payment", verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const event = await Event.findOne({ "registrations._id": id });
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Registration not found" });
+    }
+
+    const registration = event.registrations.id(id);
+    registration.paymentStatus = "rejected";
+
+    await event.save();
+
+    res.status(204).json({ message: "Payment rejected" });
+  } catch (error) {
+    console.log("Error on reject payment route", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
