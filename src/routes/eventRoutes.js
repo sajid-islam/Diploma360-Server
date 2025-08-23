@@ -130,7 +130,7 @@ router.get("/recent-reviews", async (req, res) => {
   }
 });
 
-router.get("/payment/payments-requests", verifyToken, verifyAdmin, async (req, res) => {
+router.get("/payment/payment-requests", verifyToken, verifyAdmin, async (req, res) => {
   try {
     // 1. Find payment requests of each events
     const paymentRequests = await Event.aggregate([
@@ -140,6 +140,7 @@ router.get("/payment/payments-requests", verifyToken, verifyAdmin, async (req, r
         $project: {
           eventName: 1,
           fee: 1,
+          "registrations._id": 1,
           "registrations.paymentStatus": 1,
           "registrations.paymentMethod": 1,
           "registrations.transactionId": 1,
