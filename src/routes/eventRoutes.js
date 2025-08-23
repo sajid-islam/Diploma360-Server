@@ -136,6 +136,7 @@ router.get("/payment/payment-requests", verifyToken, verifyAdmin, async (req, re
     const paymentRequests = await Event.aggregate([
       { $match: { "registrations.paymentStatus": "pending" } },
       { $unwind: "$registrations" },
+      { $sort: { "registrations.createdAt": -1 } },
       {
         $project: {
           eventName: 1,
