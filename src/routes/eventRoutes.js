@@ -168,6 +168,28 @@ router.get("/payment/payment-requests", verifyToken, verifyAdmin, async (req, re
   }
 });
 
+router.put("/payment/:id/accept-payment", verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const event = await Event.findOne({ "registrations._id": id });
+
+    if (!event) {
+      return res.status(404).json({ success: false, message: "Registration not found" });
+    }
+
+    const registration = event.registrations.id(id);
+    registration.paymentStatus = "accepted";
+
+    await event.save();
+
+    res.status(204).json({ message: "Payment accepted" });
+  } catch (error) {
+    console.log("Error on accept payment route", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
   try {
