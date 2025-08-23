@@ -56,7 +56,9 @@ router.post("/", verifyToken, verifyAdmin, async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const events = await Event.find().select("category eventName eventImage date location numberOfSeats");
+    const events = await Event.find().select(
+      "category eventName eventImage date location numberOfSeats"
+    );
     res.status(200).json(events);
   } catch (error) {
     console.log("Error in event get route", error);
@@ -128,10 +130,48 @@ router.get("/recent-reviews", async (req, res) => {
   }
 });
 
+router.get("/payment/payments-requests", verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    // 1. Find payment requests of each events
+    const paymentRequests = await Event.aggregate([
+      { $match: { "registrations.paymentStatus": "pending" } },
+      { $unwind: "$registrations" },
+      {
+        $project: {
+          eventName: 1,
+          fee: 1,
+          "registrations.paymentStatus": 1,
+          "registrations.paymentMethod": 1,
+          "registrations.transactionId": 1,
+          "registrations.name": 1,
+          "registrations.phone": 1,
+          "registrations.createdAt": 1,
+        },
+      },
+    ]);
+
+    // 2. return 404 if no payment requests or empty payment requests
+    if (!paymentRequests || paymentRequests.length === 0) {
+      return res.status(404).json({ success: false, message: "Payment requests not found" });
+    }
+
+    // 3. send response
+    res.status(200).json(paymentRequests);
+  } catch (error) {
+    console.error("Error on get payments requests", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
   try {
-    const event = await Event.findById(id).select("-registrations -reviews -eventLink -locationType");
+    const event = await Event.findById(id).select(
+      "-registrations -reviews -eventLink -locationType"
+    );
     res.status(200).json(event);
   } catch (error) {
     console.log("Error in event get route", error);
@@ -175,7 +215,10 @@ router.post("/:id/registration", verifyToken, async (req, res) => {
         await user.save();
 
         // Update user first registration if already studying or if update studyStatus
-      } else if (user.studyStatus !== "already-studying" && registrationData.studyStatus === "already-studying") {
+      } else if (
+        user.studyStatus !== "already-studying" &&
+        registrationData.studyStatus === "already-studying"
+      ) {
         Object.assign(user, {
           studyStatus: "already-studying",
           phone: registrationData.phone,
