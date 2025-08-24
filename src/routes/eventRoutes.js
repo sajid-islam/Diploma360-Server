@@ -335,7 +335,14 @@ router.get("/:email/my-bookings", verifyToken, async (req, res) => {
       {
         "registrations.email": email,
       },
-      { registrations: { $elemMatch: { email } }, eventName: 1, date: 1 }
+      {
+        registrations: { $elemMatch: { email } },
+        eventName: 1,
+        date: 1,
+        location: 1,
+        deadline: 1,
+        time: 1,
+      }
     );
 
     res.status(200).json(myEvents);
@@ -355,16 +362,27 @@ router.post("/:id/review", verifyToken, async (req, res) => {
     const email = req.user.email;
 
     const event = await Event.findById(id);
-    const alreadyReviewed = await Event.findOne({
-      _id: id,
-      "reviews.email": email,
-    });
+    // const alreadyReviewed = await Event.findOne({
+    //   _id: id,
+    //   "reviews.email": email,
+    // });
+    const alreadyReviewed = event.reviews.some((review) => review.email === email);
 
     if (alreadyReviewed) {
       return res.status(409).json({
         success: false,
         message: "Already reviewed this event",
       });
+    }
+
+    const registered = event.registrations.some(
+      (registration) => registration.email === email && registration.paymentStatus === "accepted"
+    );
+
+    if (!registered) {
+      return res
+        .status(403)
+        .json({ success: false, message: "You are not allowed to review this event" });
     }
 
     event.reviews.push(reviewData);
