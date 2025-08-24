@@ -361,11 +361,10 @@ router.post("/:id/review", verifyToken, async (req, res) => {
     const { id } = req.params;
     const email = req.user.email;
 
-    const event = await Event.findById(id);
-    // const alreadyReviewed = await Event.findOne({
-    //   _id: id,
-    //   "reviews.email": email,
-    // });
+    // 1. find the event
+    const event = await Event.findById(id).select("reviews.email registrations.email");
+
+    //2. check is reviewed before or not
     const alreadyReviewed = event.reviews.some((review) => review.email === email);
 
     if (alreadyReviewed) {
@@ -375,6 +374,7 @@ router.post("/:id/review", verifyToken, async (req, res) => {
       });
     }
 
+    // 3. check is payment accept or not. if not don't allow to review
     const registered = event.registrations.some(
       (registration) => registration.email === email && registration.paymentStatus === "accepted"
     );
@@ -385,8 +385,10 @@ router.post("/:id/review", verifyToken, async (req, res) => {
         .json({ success: false, message: "You are not allowed to review this event" });
     }
 
+    // 5. push reviews data to event collection
     event.reviews.push(reviewData);
 
+    // 6. save updated event
     event.save();
     res.status(201).json(event);
   } catch (error) {
