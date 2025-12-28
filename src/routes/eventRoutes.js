@@ -1,58 +1,65 @@
 import express from "express";
 import cloudinary from "../lib/cloudinary.js";
 import verifyAdmin from "../middleware/verifyAdmin.middleware.js";
+import verifyRole from "../middleware/verifyRole.middleware.js";
 import verifyToken from "../middleware/verifyToken.middleware.js";
 import Event from "../models/Event.js";
 import User from "../models/User.js";
 const router = express.Router();
 
-router.post("/", verifyToken, verifyAdmin, async (req, res) => {
-  const {
-    eventName,
-    locationType,
-    location,
-    category,
-    description,
-    numberOfSeats,
-    image,
-    eventLink,
-    fee,
-    organizer,
-    date,
-    time,
-    deadline,
-  } = req.body;
-  try {
-    const uploadResponse = await cloudinary.uploader.upload(image);
-    const imageUrl = uploadResponse.secure_url;
-
-    const newEvent = new Event({
+router.post(
+  "/",
+  verifyToken,
+  verifyRole(["organizer", "super_admin"]),
+  async (req, res) => {
+    const {
       eventName,
       locationType,
       location,
       category,
       description,
       numberOfSeats,
-      eventImage: imageUrl,
+      image,
       eventLink,
       fee,
+      organizer,
       date,
       time,
-      organizer,
       deadline,
-    });
+    } = req.body;
+    try {
+      const uploadResponse = await cloudinary.uploader.upload(image);
+      const imageUrl = uploadResponse.secure_url;
 
-    await newEvent.save();
+      const newEvent = new Event({
+        eventName,
+        locationType,
+        location,
+        category,
+        description,
+        numberOfSeats,
+        eventImage: imageUrl,
+        eventLink,
+        fee,
+        date,
+        time,
+        organizer,
+        deadline,
+        organizerEmail: req.user.email,
+      });
 
-    res.status(201).json(newEvent);
-  } catch (error) {
-    console.error("Error on event post route", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-    });
+      await newEvent.save();
+
+      res.status(201).json(newEvent);
+    } catch (error) {
+      console.error("Error on event post route", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+      });
+    }
   }
-});
+);
 
 router.get("/", async (req, res) => {
   try {
@@ -308,11 +315,9 @@ router.post("/:id/registration", verifyToken, async (req, res) => {
     }
 
     // 4. Make Payment Status free if event fee is 0
-    if (event.fee === 0) {
+    if (Number(event.fee) === 0) {
       registrationData.paymentStatus = "free";
     }
-    event.registrations.push(registrationData);
-
     // 5. save registration if event exist, not already booked and user updated
     event.registrations.push(registrationData);
     await event.save();
@@ -452,5 +457,71 @@ router.post("/:id/review", verifyToken, async (req, res) => {
     });
   }
 });
+
+router.put(
+  "/:id",
+  verifyToken,
+  verifyRole(["organizer", "super_admin"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const event = await Event.findById(id);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // Ownership check
+      if (
+        req.user.role === "organizer" &&
+        event.organizerEmail !== req.user.email
+      ) {
+        return res.status(403).json({
+          message: "You are not allowed to update this event",
+        });
+      }
+
+      Object.assign(event, req.body);
+      await event.save();
+
+      res.status(200).json(event);
+    } catch (error) {
+      console.error("Error updating event", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
+
+router.delete(
+  "/:id",
+  verifyToken,
+  verifyRole(["organizer", "super_admin"]),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const event = await Event.findById(id);
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+
+      // 🔒 Ownership check
+      if (
+        req.user.role === "organizer" &&
+        event.organizerEmail !== req.user.email
+      ) {
+        return res.status(403).json({
+          message: "You are not allowed to delete this event",
+        });
+      }
+
+      await event.deleteOne();
+      res.status(200).json({ message: "Event deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting event", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
 
 export default router;
