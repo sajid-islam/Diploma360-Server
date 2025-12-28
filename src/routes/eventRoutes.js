@@ -246,6 +246,21 @@ router.put(
   }
 );
 
+router.get("/my-events", verifyToken, async (req, res) => {
+  try {
+    const { role, email } = req.user;
+
+    // Super admin sees all events, organizer only their own
+    const query = role === "super_admin" ? {} : { organizerEmail: email };
+    const events = await Event.find(query).sort({ date: -1 });
+
+    res.status(200).json(events);
+  } catch (error) {
+    console.error("Error fetching events", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
   try {
