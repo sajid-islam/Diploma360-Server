@@ -1,8 +1,8 @@
-import express, { json } from "express";
+import express from "express";
 import cloudinary from "../lib/cloudinary.js";
-import Event from "../models/Event.js";
-import verifyToken from "../middleware/verifyToken.middleware.js";
 import verifyAdmin from "../middleware/verifyAdmin.middleware.js";
+import verifyToken from "../middleware/verifyToken.middleware.js";
+import Event from "../models/Event.js";
 import User from "../models/User.js";
 const router = express.Router();
 
@@ -76,7 +76,9 @@ router.get("/featured", async (req, res) => {
       .limit(3)
       .select("category eventName eventImage date location numberOfSeats");
     if (!featuredEvents) {
-      return res.status(404).json({ success: false, message: "Featured events not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Featured events not found" });
     }
     res.status(200).json(featuredEvents);
   } catch (error) {
@@ -118,7 +120,9 @@ router.get("/recent-reviews", async (req, res) => {
       },
     ]);
     if (!recentReviews || recentReviews.length === 0) {
-      return res.status(404).json({ success: false, message: "Recent reviews not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Recent reviews not found" });
     }
     res.status(200).json(recentReviews);
   } catch (error) {
@@ -130,85 +134,110 @@ router.get("/recent-reviews", async (req, res) => {
   }
 });
 
-router.get("/payment/payment-requests", verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    // 1. Find payment requests of each events
-    const paymentRequests = await Event.aggregate([
-      { $unwind: "$registrations" },
-      { $sort: { "registrations.createdAt": -1 } },
-      {
-        $project: {
-          eventName: 1,
-          fee: 1,
-          "registrations._id": 1,
-          "registrations.paymentStatus": 1,
-          "registrations.paymentMethod": 1,
-          "registrations.transactionId": 1,
-          "registrations.name": 1,
-          "registrations.phone": 1,
-          "registrations.createdAt": 1,
+router.get(
+  "/payment/payment-requests",
+  verifyToken,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      // 1. Find payment requests of each events
+      const paymentRequests = await Event.aggregate([
+        { $unwind: "$registrations" },
+        { $sort: { "registrations.createdAt": -1 } },
+        {
+          $project: {
+            eventName: 1,
+            fee: 1,
+            "registrations._id": 1,
+            "registrations.paymentStatus": 1,
+            "registrations.paymentMethod": 1,
+            "registrations.transactionId": 1,
+            "registrations.name": 1,
+            "registrations.phone": 1,
+            "registrations.createdAt": 1,
+          },
         },
-      },
-    ]);
+      ]);
 
-    // 2. return 404 if no payment requests or empty payment requests
-    if (!paymentRequests || paymentRequests.length === 0) {
-      return res.status(404).json({ success: false, message: "Payment requests not found" });
+      // 2. return 404 if no payment requests or empty payment requests
+      if (!paymentRequests || paymentRequests.length === 0) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Payment requests not found" });
+      }
+
+      // 3. send response
+      res.status(200).json(paymentRequests);
+    } catch (error) {
+      console.error("Error on get payments requests", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
     }
-
-    // 3. send response
-    res.status(200).json(paymentRequests);
-  } catch (error) {
-    console.error("Error on get payments requests", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
   }
-});
+);
 
-router.put("/payment/:id/accept-payment", verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
+router.put(
+  "/payment/:id/accept-payment",
+  verifyToken,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    const event = await Event.findOne({ "registrations._id": id });
+      const event = await Event.findOne({ "registrations._id": id });
 
-    if (!event) {
-      return res.status(404).json({ success: false, message: "Registration not found" });
+      if (!event) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Registration not found" });
+      }
+
+      const registration = event.registrations.id(id);
+      registration.paymentStatus = "accepted";
+
+      await event.save();
+
+      res.status(204).json({ message: "Payment accepted" });
+    } catch (error) {
+      console.log("Error on accept payment route", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
     }
-
-    const registration = event.registrations.id(id);
-    registration.paymentStatus = "accepted";
-
-    await event.save();
-
-    res.status(204).json({ message: "Payment accepted" });
-  } catch (error) {
-    console.log("Error on accept payment route", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
   }
-});
-router.put("/payment/:id/reject-payment", verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
+);
+router.put(
+  "/payment/:id/reject-payment",
+  verifyToken,
+  verifyAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    const event = await Event.findOne({ "registrations._id": id });
+      const event = await Event.findOne({ "registrations._id": id });
 
-    if (!event) {
-      return res.status(404).json({ success: false, message: "Registration not found" });
+      if (!event) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Registration not found" });
+      }
+
+      const registration = event.registrations.id(id);
+      registration.paymentStatus = "rejected";
+
+      await event.save();
+
+      res.status(204).json({ message: "Payment rejected" });
+    } catch (error) {
+      console.log("Error on reject payment route", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
     }
-
-    const registration = event.registrations.id(id);
-    registration.paymentStatus = "rejected";
-
-    await event.save();
-
-    res.status(204).json({ message: "Payment rejected" });
-  } catch (error) {
-    console.log("Error on reject payment route", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
   }
-});
+);
 
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
@@ -235,20 +264,27 @@ router.post("/:id/registration", verifyToken, async (req, res) => {
     //1. Find Event
     const event = await Event.findById(id);
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
     //2. Check already registered or not
     const alreadyBooked = event.registrations.some((r) => r.email === email);
     if (alreadyBooked) {
-      return res.status(409).json({ success: false, message: "Already booked this event" });
+      return res
+        .status(409)
+        .json({ success: false, message: "Already booked this event" });
     }
 
     // 3. Update user only if needed
     const user = await User.findOne({ email });
     if (user) {
       // Update user on first registration if want to study
-      if (!user.studyStatus && registrationData.studyStatus === "want-to-study") {
+      if (
+        !user.studyStatus &&
+        registrationData.studyStatus === "want-to-study"
+      ) {
         Object.assign(user, {
           studyStatus: "want-to-study",
           phone: registrationData.phone,
@@ -270,7 +306,14 @@ router.post("/:id/registration", verifyToken, async (req, res) => {
         await user.save();
       }
     }
-    // 4. save registration if event exist, not already booked and user updated
+
+    // 4. Make Payment Status free if event fee is 0
+    if (event.fee === 0) {
+      registrationData.paymentStatus = "free";
+    }
+    event.registrations.push(registrationData);
+
+    // 5. save registration if event exist, not already booked and user updated
     event.registrations.push(registrationData);
     await event.save();
 
@@ -293,11 +336,15 @@ router.delete("/:id/registration", verifyToken, async (req, res) => {
     const event = await Event.findById(id);
 
     if (!event) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Event not found" });
     }
 
     // Check if user has a registration
-    const registrationIndex = event.registrations.findIndex((reg) => reg.email === email);
+    const registrationIndex = event.registrations.findIndex(
+      (reg) => reg.email === email
+    );
 
     if (registrationIndex === -1) {
       return res.status(404).json({
@@ -362,10 +409,13 @@ router.post("/:id/review", verifyToken, async (req, res) => {
     const email = req.user.email;
 
     // 1. find the event
-    const event = await Event.findById(id).select("reviews.email registrations.email");
-
+    const event = await Event.findById(id).select(
+      "reviews.email registrations.email registrations.paymentStatus"
+    );
     //2. check is reviewed before or not
-    const alreadyReviewed = event.reviews.some((review) => review.email === email);
+    const alreadyReviewed = event.reviews.some(
+      (review) => review.email === email
+    );
 
     if (alreadyReviewed) {
       return res.status(409).json({
@@ -374,15 +424,18 @@ router.post("/:id/review", verifyToken, async (req, res) => {
       });
     }
 
-    // 3. check is payment accept or not. if not don't allow to review
+    // 3. check is payment accept/free or not. if not, don't allow to review
     const registered = event.registrations.some(
-      (registration) => registration.email === email && registration.paymentStatus === "accepted"
+      (registration) =>
+        registration.email === email &&
+        ["accepted", "free"].includes(registration.paymentStatus)
     );
 
     if (!registered) {
-      return res
-        .status(403)
-        .json({ success: false, message: "You are not allowed to review this event" });
+      return res.status(403).json({
+        success: false,
+        message: "You are not allowed to review this event",
+      });
     }
 
     // 5. push reviews data to event collection

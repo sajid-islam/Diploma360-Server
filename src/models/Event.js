@@ -5,10 +5,15 @@ const registrationSchema = new mongoose.Schema(
         name: { type: String, required: true },
         email: { type: String, required: true, lowercase: true },
         phone: { type: String, required: true },
-        paymentStatus: { type: String, required: true, default: "pending" },
         studyStatus: { type: String, required: true },
-        paymentMethod: { type: String, required: true },
-        transactionId: { type: String, required: true },
+        paymentMethod: { type: String },
+        transactionId: { type: String },
+        paymentStatus: {
+            type: String,
+            enum: ["pending", "accepted", "rejected", "free"],
+            default: "free",
+        },
+
         sscYear: {
             type: String,
             required: function () {
@@ -68,7 +73,7 @@ const eventSchema = new mongoose.Schema(
         },
         registrations: [registrationSchema],
         reviews: [reviewSchema],
-        fee: { type: Number, required: true },
+        fee: { type: Number, default: 0 },
         organizer: { type: String, default: "Unknown" },
         date: { type: Date, required: true },
 
