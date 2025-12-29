@@ -5,14 +5,14 @@ import verifyToken from "./../middleware/verifyToken.middleware.js";
 
 const router = express.Router();
 
-const production = process.env.NODE_ENV === "production";
+const isProduction = process.env.NODE_ENV === "production";
 
 const cookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "None" : "Lax",
+  maxAge: 30 * 24 * 60 * 60 * 1000,
 
-    httpOnly: true,
-    secure: true,
-    sameSite: "None",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
 };
 
 router.post("/", async (req, res) => {
