@@ -71,6 +71,113 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/stats", verifyToken, async (req, res) => {
+  try {
+    const role = req.user.role;
+    const email = req.user.email;
+
+    if (role === "student") {
+      const registrations = await Event.find({
+        "registrations.email": email,
+      }).select("eventName date time registrations");
+
+      const totalRegistrations = registrations.length;
+
+      const nextEvent =
+        registrations
+          .filter((e) => new Date(e.date) >= new Date())
+          .sort((a, b) => new Date(a.date) - new Date(b.date))[0] || null;
+
+      // Chart: registrations per month
+      const regPerMonth = registrations.reduce((acc, e) => {
+        const month = new Date(e.date).toLocaleString("default", {
+          month: "short",
+          year: "numeric",
+        });
+        acc[month] = (acc[month] || 0) + 1;
+        return acc;
+      }, {});
+
+      res.json({
+        role: "student",
+        totalRegistrations,
+        nextEvent,
+        chartData: Object.entries(regPerMonth).map(([month, count]) => ({
+          month,
+          count,
+        })),
+      });
+    } else if (role === "organizer") {
+      const events = await Event.find({ organizerEmail: email });
+
+      const totalEvents = events.length;
+      const totalRegistrations = events.reduce(
+        (sum, e) => sum + e.registrations.length,
+        0
+      );
+      const totalRevenue = events.reduce(
+        (sum, e) =>
+          sum +
+          e.registrations
+            .filter((r) => r.paymentStatus === "accepted")
+            .reduce((s, r) => s + Number(r.transactionAmount || 0), 0),
+        0
+      );
+
+      const revenuePerEvent = events.map((e) => ({
+        name: e.eventName,
+        revenue: e.registrations
+          .filter((r) => r.paymentStatus === "accepted")
+          .reduce((s, r) => s + Number(r.transactionAmount || 0), 0),
+      }));
+
+      res.json({
+        role: "organizer",
+        totalEvents,
+        totalRegistrations,
+        totalRevenue,
+        chartData: revenuePerEvent,
+      });
+    } else if (role === "super_admin") {
+      const studentCount = await User.countDocuments({ role: "student" });
+      const organizerCount = await User.countDocuments({ role: "organizer" });
+      const totalEvents = await Event.countDocuments();
+      const totalRegistrations = await Event.aggregate([
+        { $unwind: "$registrations" },
+        { $count: "total" },
+      ]);
+
+      const events = await Event.find().select("eventName registrations date");
+      const registrationsPerMonth = {};
+      events.forEach((e) => {
+        e.registrations.forEach((r) => {
+          const month = new Date(r.createdAt).toLocaleString("default", {
+            month: "short",
+            year: "numeric",
+          });
+          registrationsPerMonth[month] =
+            (registrationsPerMonth[month] || 0) + 1;
+        });
+      });
+
+      res.json({
+        role: "super_admin",
+        users: { student: studentCount, organizer: organizerCount },
+        totalEvents,
+        totalRegistrations: totalRegistrations[0]?.total || 0,
+        chartData: Object.entries(registrationsPerMonth).map(
+          ([month, count]) => ({ month, count })
+        ),
+      });
+    } else {
+      res.status(403).json({ message: "Invalid role" });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.get("/featured", async (req, res) => {
   try {
     const featuredEvents = await Event.find()
