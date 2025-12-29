@@ -13,6 +13,12 @@ const registrationSchema = new mongoose.Schema(
       enum: ["pending", "accepted", "rejected", "free"],
       default: "free",
     },
+    ticket: {
+      id: String,
+      qrCode: String,
+      used: { type: Boolean, default: false },
+      usedAt: Date,
+    },
 
     sscYear: {
       type: String,

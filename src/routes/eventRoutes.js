@@ -1,4 +1,5 @@
 import express from "express";
+import { nanoid } from "nanoid";
 import cloudinary from "../lib/cloudinary.js";
 import verifyRole from "../middleware/verifyRole.middleware.js";
 import verifyToken from "../middleware/verifyToken.middleware.js";
@@ -103,6 +104,85 @@ router.get("/categories", async (req, res) => {
     });
   }
 });
+
+router.get("/my-tickets", verifyToken, async (req, res) => {
+  try {
+    const email = req.user.email;
+
+    // 1. Find events where user is registered and payment is free/accepted
+    const events = await Event.find({
+      "registrations.email": email,
+      $or: [
+        { "registrations.paymentStatus": "accepted" },
+        { "registrations.paymentStatus": "free" },
+      ],
+    });
+
+    // 2. Map to ticket info
+    const tickets = events
+      .map((event) => {
+        const reg = event.registrations.find((r) => r.email === email);
+        if (!reg || !reg.ticket) return null;
+        return {
+          eventName: event.eventName,
+          ticketId: reg.ticket.id,
+          used: reg.ticket.used,
+          date: event.date,
+          time: event.time,
+        };
+      })
+      .filter(Boolean);
+
+    res.json(tickets);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post(
+  "/validate-ticket",
+  verifyToken,
+  verifyRole(["organizer", "super_admin"]),
+  async (req, res) => {
+    try {
+      const { ticketId } = req.body; // typed or scanned
+
+      // Find ticket in any registration of the organizer's events
+      const event = await Event.findOne({
+        "registrations.ticket.id": ticketId,
+      });
+
+      if (!event) return res.status(404).json({ message: "Ticket not found" });
+
+      const registration = event.registrations.find(
+        (r) => r.ticket?.id === ticketId
+      );
+
+      // Only validate if ticket is free or accepted
+      if (!["free", "accepted"].includes(registration.paymentStatus))
+        return res.status(403).json({ message: "Ticket payment not valid" });
+
+      // Check if already used
+      if (registration.ticket.used)
+        return res.status(409).json({ message: "Ticket already used" });
+
+      // Mark ticket as used
+      registration.ticket.used = true;
+      registration.ticket.usedAt = new Date();
+      await event.save();
+
+      res.json({
+        message: "Ticket validated successfully",
+        eventName: event.eventName,
+        user: registration.name,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
 
 router.get("/recent-reviews", async (req, res) => {
   try {
@@ -383,6 +463,9 @@ router.post("/:id/registration", verifyToken, async (req, res) => {
         await user.save();
       }
     }
+
+    const ticketId = nanoid(10);
+    registrationData.ticket = { id: ticketId, used: false };
 
     // 4. Handle payment status securely
     if (Number(event.fee) === 0) {
