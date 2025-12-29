@@ -1,65 +1,59 @@
 import express from "express";
 import cloudinary from "../lib/cloudinary.js";
-import verifyAdmin from "../middleware/verifyAdmin.middleware.js";
 import verifyRole from "../middleware/verifyRole.middleware.js";
 import verifyToken from "../middleware/verifyToken.middleware.js";
 import Event from "../models/Event.js";
 import User from "../models/User.js";
 const router = express.Router();
 
-router.post(
-  "/",
-  verifyToken,
-  verifyRole(["organizer", "super_admin"]),
-  async (req, res) => {
-    const {
+router.post("/", verifyToken, verifyRole(["organizer"]), async (req, res) => {
+  const {
+    eventName,
+    locationType,
+    location,
+    category,
+    description,
+    numberOfSeats,
+    image,
+    eventLink,
+    fee,
+    organizer,
+    date,
+    time,
+    deadline,
+  } = req.body;
+  try {
+    const uploadResponse = await cloudinary.uploader.upload(image);
+    const imageUrl = uploadResponse.secure_url;
+
+    const newEvent = new Event({
       eventName,
       locationType,
       location,
       category,
       description,
       numberOfSeats,
-      image,
+      eventImage: imageUrl,
       eventLink,
       fee,
-      organizer,
       date,
       time,
+      organizer,
       deadline,
-    } = req.body;
-    try {
-      const uploadResponse = await cloudinary.uploader.upload(image);
-      const imageUrl = uploadResponse.secure_url;
+      organizerEmail: req.user.email,
+    });
 
-      const newEvent = new Event({
-        eventName,
-        locationType,
-        location,
-        category,
-        description,
-        numberOfSeats,
-        eventImage: imageUrl,
-        eventLink,
-        fee,
-        date,
-        time,
-        organizer,
-        deadline,
-        organizerEmail: req.user.email,
-      });
+    await newEvent.save();
 
-      await newEvent.save();
-
-      res.status(201).json(newEvent);
-    } catch (error) {
-      console.error("Error on event post route", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal Server Error",
-      });
-    }
+    res.status(201).json(newEvent);
+  } catch (error) {
+    console.error("Error on event post route", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
-);
+});
 
 router.get("/", async (req, res) => {
   try {
@@ -144,39 +138,50 @@ router.get("/recent-reviews", async (req, res) => {
 router.get(
   "/payment/payment-requests",
   verifyToken,
-  verifyAdmin,
+  verifyRole(["organizer"]),
   async (req, res) => {
     try {
-      // 1. Find payment requests of each events
       const paymentRequests = await Event.aggregate([
+        {
+          $match: {
+            organizerEmail: req.user.email, // 🔒 ONLY OWN EVENTS
+          },
+        },
         { $unwind: "$registrations" },
+        {
+          $match: {
+            "registrations.paymentStatus": {
+              $in: ["pending", "accepted", "rejected"],
+            },
+          },
+        },
+
         { $sort: { "registrations.createdAt": -1 } },
         {
           $project: {
             eventName: 1,
             fee: 1,
             "registrations._id": 1,
+            "registrations.name": 1,
+            "registrations.phone": 1,
             "registrations.paymentStatus": 1,
             "registrations.paymentMethod": 1,
             "registrations.transactionId": 1,
-            "registrations.name": 1,
-            "registrations.phone": 1,
             "registrations.createdAt": 1,
           },
         },
       ]);
 
-      // 2. return 404 if no payment requests or empty payment requests
-      if (!paymentRequests || paymentRequests.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Payment requests not found" });
+      if (!paymentRequests.length) {
+        return res.status(404).json({
+          success: false,
+          message: "No payment requests found",
+        });
       }
 
-      // 3. send response
       res.status(200).json(paymentRequests);
     } catch (error) {
-      console.error("Error on get payments requests", error);
+      console.error("Error on get payment requests", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -188,60 +193,67 @@ router.get(
 router.put(
   "/payment/:id/accept-payment",
   verifyToken,
-  verifyAdmin,
+  verifyRole(["organizer"]),
   async (req, res) => {
     try {
-      const { id } = req.params;
-
-      const event = await Event.findOne({ "registrations._id": id });
+      const event = await Event.findOne({
+        organizerEmail: req.user.email, // 🔒 ownership enforced
+        "registrations._id": req.params.id,
+      });
 
       if (!event) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Registration not found" });
+        return res.status(403).json({
+          success: false,
+          message: "Not allowed or registration not found",
+        });
       }
 
-      const registration = event.registrations.id(id);
+      const registration = event.registrations.id(req.params.id);
       registration.paymentStatus = "accepted";
 
       await event.save();
 
-      res.status(204).json({ message: "Payment accepted" });
+      res.status(200).json({ message: "Payment accepted" });
     } catch (error) {
-      console.log("Error on accept payment route", error);
-      res
-        .status(500)
-        .json({ success: false, message: "Internal server error" });
+      console.error("Error on accept payment", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
     }
   }
 );
+
 router.put(
   "/payment/:id/reject-payment",
   verifyToken,
-  verifyAdmin,
+  verifyRole(["organizer"]),
   async (req, res) => {
     try {
-      const { id } = req.params;
-
-      const event = await Event.findOne({ "registrations._id": id });
+      const event = await Event.findOne({
+        organizerEmail: req.user.email, // 🔒 ownership enforced
+        "registrations._id": req.params.id,
+      });
 
       if (!event) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Registration not found" });
+        return res.status(403).json({
+          success: false,
+          message: "Not allowed or registration not found",
+        });
       }
 
-      const registration = event.registrations.id(id);
+      const registration = event.registrations.id(req.params.id);
       registration.paymentStatus = "rejected";
 
       await event.save();
 
-      res.status(204).json({ message: "Payment rejected" });
+      res.status(200).json({ message: "Payment rejected" });
     } catch (error) {
-      console.log("Error on reject payment route", error);
-      res
-        .status(500)
-        .json({ success: false, message: "Internal server error" });
+      console.error("Error on reject payment", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
     }
   }
 );
@@ -260,6 +272,49 @@ router.get("/my-events", verifyToken, async (req, res) => {
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 });
+router.get(
+  "/reviews",
+  verifyToken,
+  verifyRole(["organizer", "super_admin"]),
+  async (req, res) => {
+    try {
+      const matchStage =
+        req.user.role === "organizer" ? { organizerEmail: req.user.email } : {};
+
+      const reviews = await Event.aggregate([
+        { $match: matchStage },
+        { $unwind: "$reviews" },
+        { $sort: { "reviews.createdAt": -1 } },
+        {
+          $project: {
+            eventName: 1,
+            organizerEmail: 1,
+            "reviews._id": 1,
+            "reviews.name": 1,
+            "reviews.email": 1,
+            "reviews.rating": 1,
+            "reviews.comment": 1,
+            "reviews.createdAt": 1,
+          },
+        },
+      ]);
+
+      if (!reviews.length) {
+        return res
+          .status(404)
+          .json({ success: false, message: "No reviews found" });
+      }
+
+      res.status(200).json(reviews);
+    } catch (error) {
+      console.error("Error fetching reviews", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+);
 
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
@@ -329,10 +384,21 @@ router.post("/:id/registration", verifyToken, async (req, res) => {
       }
     }
 
-    // 4. Make Payment Status free if event fee is 0
+    // 4. Handle payment status securely
     if (Number(event.fee) === 0) {
       registrationData.paymentStatus = "free";
+    } else {
+      // Paid event → payment info REQUIRED
+      if (!registrationData.transactionId || !registrationData.paymentMethod) {
+        return res.status(400).json({
+          success: false,
+          message: "Payment information required for paid events",
+        });
+      }
+
+      registrationData.paymentStatus = "pending";
     }
+
     // 5. save registration if event exist, not already booked and user updated
     event.registrations.push(registrationData);
     await event.save();
