@@ -265,7 +265,7 @@ router.get("/:id", async (req, res) => {
   const id = req.params.id;
   try {
     const event = await Event.findById(id).select(
-      "-registrations -reviews -eventLink -locationType"
+      "-registrations -reviews -eventLink"
     );
     res.status(200).json(event);
   } catch (error) {
