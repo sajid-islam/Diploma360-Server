@@ -199,6 +199,39 @@ router.get("/featured", async (req, res) => {
   }
 });
 
+router.get(
+  "/registrations",
+  verifyToken,
+  verifyRole(["organizer"]),
+  async (req, res) => {
+    try {
+      const organizerEmail = req.user.email;
+
+      // Find all events created by this organizer
+      const events = await Event.find({ organizerEmail });
+
+      // Flatten all registrations with event info
+      const registrations = [];
+      events.forEach((event) => {
+        event.registrations.forEach((reg) => {
+          registrations.push({
+            eventId: event._id,
+            eventName: event.eventName,
+            ...reg._doc, // include registration fields
+          });
+        });
+      });
+
+      res.json({ success: true, registrations });
+    } catch (err) {
+      console.error("Error fetching registrations:", err);
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
+    }
+  }
+);
+
 router.get("/categories", async (req, res) => {
   try {
     const categories = await Event.distinct("category");

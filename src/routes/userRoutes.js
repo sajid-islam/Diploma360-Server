@@ -1,5 +1,6 @@
 import express from "express";
 import generateToken from "../lib/generateToken.js";
+import verifyRole from "../middleware/verifyRole.middleware.js";
 import User from "../models/User.js";
 import verifyToken from "./../middleware/verifyToken.middleware.js";
 
@@ -87,5 +88,44 @@ router.get("/me", verifyToken, async (req, res) => {
 
   res.json(user);
 });
+
+router.get(
+  "/all",
+  verifyToken,
+  verifyRole(["super_admin"]),
+  async (req, res) => {
+    try {
+      const users = await User.find().select("name email role createdAt");
+
+      res.json({ success: true, users });
+    } catch (err) {
+      console.error("Error fetching users:", err);
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
+    }
+  }
+);
+
+router.patch(
+  "/:id/role",
+  verifyToken,
+  verifyRole(["super_admin"]),
+  async (req, res) => {
+    try {
+      const { role } = req.body;
+      const user = await User.findById(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      user.role = role;
+      await user.save();
+
+      res.json({ message: "Role updated successfully" });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+);
 
 export default router;
