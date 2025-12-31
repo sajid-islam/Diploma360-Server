@@ -10,10 +10,9 @@ const isProduction = process.env.NODE_ENV === "production";
 const cookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? "None" : "Lax",
+  sameSite: "Lax",
   path: "/",
   maxAge: 30 * 24 * 60 * 60 * 1000,
-
 };
 
 router.post("/", async (req, res) => {
