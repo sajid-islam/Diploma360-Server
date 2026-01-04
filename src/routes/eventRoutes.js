@@ -178,6 +178,46 @@ router.get("/stats", verifyToken, async (req, res) => {
   }
 });
 
+router.get("/my-timeline", verifyToken, async (req, res) => {
+  try {
+    const email = req.user.email;
+
+    const events = await Event.find(
+      { "registrations.email": email },
+      {
+        eventName: 1,
+        date: 1,
+        time: 1,
+        location: 1,
+        locationType: 1,
+        eventLink: 1,
+        registrations: 1,
+      }
+    ).sort({ date: 1 });
+
+    const timeline = events.map((event) => {
+      const registration = event.registrations.find((r) => r.email === email);
+
+      return {
+        eventId: event._id,
+        eventName: event.eventName,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        locationType: event.locationType,
+        eventLink: event.eventLink,
+        ticketUsed: registration?.ticket?.used || false,
+        joinedAt: registration?.ticket?.usedAt || null,
+      };
+    });
+
+    res.json({ success: true, timeline });
+  } catch (error) {
+    console.error("Timeline error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 router.get("/featured", async (req, res) => {
   try {
     const featuredEvents = await Event.find()
